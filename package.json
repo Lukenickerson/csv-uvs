@@ -1,0 +1,29 @@
+{
+  "name": "csv-uvs",
+  "version": "0.1.0",
+  "description": "Upload, validate, and save Comma Separated Value files",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lukenickerson/csv-uvs.git"
+  },
+  "keywords": [
+    "csv",
+    "upload",
+    "validate",
+    "save",
+    "spreadsheet"
+  ],
+  "author": "Luke Nickerson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Lukenickerson/csv-uvs/issues"
+  },
+  "homepage": "https://github.com/Lukenickerson/csv-uvs#readme",
+  "dependencies": {
+    "papaparse": "^5.1.1"
+  }
+}
