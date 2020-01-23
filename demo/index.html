@@ -4,6 +4,7 @@
 	<meta charset="utf-8">
 	<title>Demo of CSV Upload</title>
 	<link rel="stylesheet" href="uvs-demo.css">
+	<link rel="stylesheet" href="loader.css">
 	<script src="../node_modules/papaparse/papaparse.min.js"></script>
 	<script src="../src/index.js"></script>
 	<script src="demo.js"></script>
@@ -12,13 +13,28 @@
 <body>
 	<article>
 		<h1>Bulk Upload</h1>
-		<div id="file-selection-drop" class="uvs-drop">
-			Drop CSV file here<br>
-			or<br>
-			<label for="file-selection">Choose File:</label>
-			<input type="file" id="file-selection" />
+		<div id="file-selection-container">
+			<form>
+				<div id="file-selection-drop" class="uvs-drop">
+					Drop CSV file here<br>
+					or<br>
+					<label for="file-selection">Choose File:</label>
+					<input type="file" id="file-selection" />
+					<input type="reset" value="X" class="file-selection-reset" />
+				</div>
+			</form>
+			<div class="working-message">
+				<div class="loader"></div>
+				Working...
+				<br>Please don't navigate away from this page.
+			</div>
+			<div class="progress">
+				
+			</div>
+			<div class="errors">
+
+			</div>
 		</div>
-		(Check the F12 console for results)
 	</article>
 
 </body>

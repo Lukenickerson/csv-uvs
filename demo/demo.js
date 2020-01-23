@@ -12,8 +12,8 @@
 				type: "number"
 			}
 		},
-		headerOrder: ['NAME', 'BIRTHDAY', 'SIBLINGS'], // TODO
-		strictHeaderOrder: false, // TODO
+		headerOrder: ['NAME', 'BIRTHDAY', 'SIBLINGS'],
+		strictHeaderOrder: false,
 		strictHeaderCase: false, // TODO
 		validateExtension: 'csv',
 		discardExtraColumns: false, // TODO
@@ -23,12 +23,24 @@
 		dynamicTyping: false,
 		skipEmptyLines: true,
 		// DOM config
+		document: window.document,
+		fileSelectionContainerId: 'file-selection-container',
 		fileSelectorId: 'file-selection',
 		fileDropId: 'file-selection-drop',
+		fileSelectionResetSelector: '.file-selection-reset',
+		workingClass: 'working',
 		// Handlers
-		save: (result) => { console.log('SAVE:', result); },
+		save: (result, continueCallback) => {
+			console.log('SAVE:', result);
+			window.setTimeout(() => { continueCallback(); }, 100);
+		},
+		error: (message) => {
+			window.document.querySelector('#file-selection-container .errors').append(message);
+		},
 	};
 
 	const uvs = new Uvs(config);
 	uvs.setupWhenDomReady(window.document);
+
+	window.uvs = uvs;
 })();

@@ -4,7 +4,7 @@ const defaultParseOptions = {
 	newline: "", // auto-detect
 	quoteChar: '"',
 	escapeChar: '"', // TODO: Is this standard? Does XLS use this?
-	header: false,
+	header: true,
 	transformHeader: undefined,
 	// dynamicTyping: config.dynamicTyping,
 	preview: 0,
@@ -33,8 +33,15 @@ class Uvs {
 		this.doc = config.document;
 		this.fileSelectorId = config.fileSelectorId;
 		this.fileDropId = config.fileDropId;
+		this.fileSelectionContainerId = config.fileSelectionContainerId;
+		this.fileSelectionResetSelector = config.fileSelectionResetSelector;
+		this.workingClass = config.workingClass || 'working';
 		// Options
 		this.validateExtension = String(config.validateExtension);
+		this.strictHeaderOrder = Boolean(config.strictHeaderOrder);
+		// Comparison data
+		this.headerOrder = config.headerOrder || [];
+		this.columns = config.columns || {};
 		// Error handling
 		this.warn = config.warn || console.warn;
 		// Papa config
@@ -43,6 +50,7 @@ class Uvs {
 		// Callbacks
 		this.step = (typeof config.step === 'function') ? config.step : this.handleStep;
 		this.save = (typeof config.save === 'function') ? config.save : this.handleSave;
+		this.error = (typeof config.error === 'function') ? config.error : this.handleError;
 	}
 
 	//----- Default Handlers
@@ -53,7 +61,7 @@ class Uvs {
 	}
 
 	handleInvalidExtension(file, ext) {
-		alert('Invalid extension');
+		this.error(`Invalid extension: ${ext}`);
 		return false;
 	}
 
@@ -74,22 +82,60 @@ class Uvs {
 				if (!cont) { return; }
 			}
 		}
+		this.setContainerWorking();
 		this.parseFile(file);
 	}
 
+	finish() {
+		this.resetContainer();
+	}
+
 	handleStep(results, parser) {
-		// console.log("Step -", results);
-		if (results.errors.length > 1) {
-			this.warn('ERRORS');
-		} else {
-			parser.pause();
-			this.save(results.data); // TODO: Switch to async/await or callback
-			parser.resume();
+		const abort = (msg) => {
+			this.error(msg);
+			parser.abort();
+		};
+		if (true) { // TODO: only do on row 1
+			if (!results.meta.fields) {
+				abort('No header found');
+				return;
+			}
+			let missedExpectedColumns = false;
+			if (this.strictHeaderOrder && !this.matchHeaderOrder(results.meta.fields, this.headerOrder)) {
+				missedExpectedColumns = this.headerOrder;
+			}
+			if (!this.matchHeaders(results.meta.fields, this.columns)) {
+				missedExpectedColumns = Object.keys(this.columns);
+			}
+			if (missedExpectedColumns) {
+				abort(
+					`Incorrect column headers.
+					Expecting: ${missedExpectedColumns.join(', ')},
+					but found: ${results.meta.fields.join(', ')}`
+				);
+				return;
+			}
 		}
+		console.log("Step -", results, parser);
+		if (results.errors.length > 1) {
+			// TODO: track the errors
+			this.warn('ERRORS');
+			// parser.abort();
+			return;
+		}
+		const continueCallback = () => { parser.resume(); };
+
+		parser.pause();
+		this.save(results.data, continueCallback);
+		// parser.resume();
 	}
 
 	handleSave(data) { // TODO: Switch to async/await or callback
-		console.log('Save', data);
+		// console.log('Save', data);
+	}
+
+	handleError(msg) {
+		this.warn(msg);
 	}
 
 	//----- Parsing
@@ -101,16 +147,63 @@ class Uvs {
 	}
 
 	getParseOptions() {
-		const parseStep = (results, parser) => {
+		const step = (results, parser) => {
 			this.step(results, parser);
 		};
+		const complete = (results, file) => { this.finish(); }
 		const parseOverrides = {
-			step: parseStep,
+			step,
+			complete,
 			dynamicTyping: this.dynamicTyping,
 			skipEmptyLines: this.skipEmptyLines
 		};
 		const parseOptions = Object.assign({}, defaultParseOptions, parseOverrides);
 		return parseOptions;
+	}
+
+	matchHeaders(arr = [], columns = {}) {
+		for (let i = 0; i < arr.length; i++) {
+			if (!Boolean(columns[arr[i]])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	matchHeaderOrder(arr1 = [], arr2 = []) {
+		if (arr1.length !== arr2.length) {
+			return false;
+		}
+		for (let i = 0; i < arr1.length; i++) {
+			if (arr1[i] !== arr2[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	//----- DOM
+
+	getContainerElement() {
+		return this.doc.getElementById(this.fileSelectionContainerId);
+	}
+
+	getResetButton() {
+		const fullSelector = `#${this.fileSelectionContainerId} ${this.fileSelectionResetSelector}`;
+		return this.doc.querySelector(fullSelector);
+	}
+
+	setContainerWorking() {
+		this.getContainerElement().classList.add(this.workingClass);
+	}
+
+	resetContainer() {
+		this.getContainerElement().classList.remove(this.workingClass);
+	}
+
+	enableResetButton(enable = true) {
+		// TODO: set based on whether there is a file or not
+		this.getResetButton().disabled = !enable;
 	}
 
 	//----- Event Handling
@@ -119,6 +212,7 @@ class Uvs {
 		this.doNothing(e);
 		const dt = e.dataTransfer;
 		const files = dt.files;
+		this.enableResetButton();
 		this.handleFiles(files);
 	}
 
@@ -130,6 +224,7 @@ class Uvs {
 	//----- Setup
 
 	setup(doc) {
+		this.setupReset(doc);
 		this.setupFileSelection(doc);
 		this.setupDrop(doc);
 	}
@@ -144,6 +239,7 @@ class Uvs {
 			return false;
 		}
 		const handleFilesInternal = (files) => {
+			this.enableResetButton();
 			this.handleFiles(files);
 		};
 		fileSelector.onchange = function onFileSelectionChange(onChangeEvent) {
@@ -166,6 +262,17 @@ class Uvs {
 		drop.addEventListener('dragenter', dragEnter, false);
 		drop.addEventListener('dragover', dragOver, false);
 		drop.addEventListener('drop', onDrop, false);
+		return true;
+	}
+
+	setupReset() {
+		const resetButton = this.getResetButton();
+		if (resetButton === null) {
+			this.warn('No reset button found');
+			return false;
+		}
+		this.enableResetButton(false);
+		resetButton.addEventListener('click', () => { this.enableResetButton(false); });
 		return true;
 	}
 
