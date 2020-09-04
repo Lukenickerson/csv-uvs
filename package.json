@@ -24,6 +24,6 @@
   },
   "homepage": "https://github.com/Lukenickerson/csv-uvs#readme",
   "dependencies": {
-    "papaparse": "^5.1.1"
+    "papaparse": "^5.2.0"
   }
 }
